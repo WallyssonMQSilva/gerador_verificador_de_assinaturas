@@ -2,7 +2,6 @@ import random
 import hashlib
 import base64
 from math import gcd
-from sympy import nextprime
 import os
 
 def PseudoPrimoForte(n, b):
@@ -210,9 +209,9 @@ def main():
             assinatura = extrair_assinatura(documento)
 
             while verificador:
-                p = nextprime(10**308) 
-                print(p)
-                q = nextprime(10**308 + 2000)
+                print("Dica: em caso de estar sendo difícil encontrar um primo válido, utilize a função nextprime() da biblioteca externa do python sympy e cole o número aqui.")
+                p = int(input('Escolha o primeiro primo "p" que tenha ao menos 1024 bits(309 dígitos): '))
+                q = int(input('Escolha o primeiro primo "p" que tenha ao menos 1024 bits(309 dígitos): '))
 
                 p_string = str(p)
                 q_string = str(q)
