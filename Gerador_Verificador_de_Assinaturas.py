@@ -29,15 +29,8 @@ def TesteMillerRabin(n, k):
 def Geracao_de_Chave(p, q):
     n = p * q
     phi = (p - 1) * (q - 1)
-    verificador = True
-    while verificador:
-        e = int(input('Escolha o "e" tal que o mdc entre "e" e "phi" seja = 1 e "e" seja menor que "phi": '))
-        if gcd((e,phi) == 1):
-            verificador = False
-        else:
-            print(' A chave pública "e" escolhida tem o mdc(e, φ(n)), difente de 1, logo é uma chave inválida.')
+    e = int(input('Escolha o "e" tal que o mdc entre "e" e "phi" seja = 1 e "e" seja menor que "phi": '))
     d = pow(e, -1, phi)
-    # e = 65537
     return [e, n], [d, n]
 
 def Hash(mensagem):
@@ -125,8 +118,6 @@ def oaep_decode(encoded, n_length, label=b"", hash_func=hashlib.sha256):
 
     if i >= len(db) or db[i] != 1:
         raise ValueError("Formato inválido na decodificação OAEP, separador 0x01 ausente")
-
-    # Retornar a mensagem decodificada
     return db[i+1:]
 
 
@@ -195,80 +186,99 @@ def extrair_assinatura(nome_arquivo):
 
 def main():
     terminou = False
-    verificador = True
     lista_assinaturas = {}
     lista_chaves_publicas = {}
 
     while not terminou:
-        escolha = int(input("Digite 1 para fazer uma nova assinatura \nDigite 2 para homologar uma assinatura \nDigite 3 para encerrar o programa -> "))
+        try:
+            escolha = int(input(
+                "Digite 1 para fazer uma nova assinatura\n"
+                "Digite 2 para homologar uma assinatura\n"
+                "Digite 3 para encerrar o programa -> "
+            ))
+        except ValueError:
+            print("Entrada inválida! Digite um número válido.")
+            continue
 
         if escolha == 1:
+            cpf = input("Qual CPF deseja vincular com a assinatura? ").strip()
+            documento = input("Insira o documento com a assinatura: ").strip()
 
-            cpf = input("Qual cpf deseja vincular com a assinatura? ")
-            documento = input("Insira o documento com a assinatura:")
             assinatura = extrair_assinatura(documento)
+            if not assinatura:
+                print("Erro: Assinatura não encontrada no documento.")
+                continue
 
-            while verificador:
-                print("Dica: em caso de estar sendo difícil encontrar um primo válido, utilize a função nextprime() da biblioteca externa do python sympy e cole o número aqui.")
-                p = int(input('Escolha o primeiro primo "p" que tenha ao menos 1024 bits(309 dígitos): '))
-                q = int(input('Escolha o primeiro primo "p" que tenha ao menos 1024 bits(309 dígitos): '))
+            while True:
+                try:
+                    print("Dica: Use a função nextprime() da biblioteca SymPy para encontrar primos válidos.")
+                    p = int(input('Escolha o primo "p" com pelo menos 1024 bits (309 dígitos): ').strip())
+                    q = int(input('Escolha o primo "q" com pelo menos 1024 bits (309 dígitos): ').strip())
 
-                p_string = str(p)
-                q_string = str(q)
-                aux1 = p_string.strip()
-                aux2 = q_string.strip()
+                    if len(str(p)) < 309 or len(str(q)) < 309:
+                        print("Erro: Os números primos precisam ter pelo menos 1024 bits.")
+                        continue
 
-                numero_teste = random.randint(10,100)
+                    numero_teste = random.randint(10, 100)
+                    if not TesteMillerRabin(p, numero_teste) or not TesteMillerRabin(q, numero_teste):
+                        print("Erro: Um dos números inseridos não é primo. Tente novamente.")
+                        continue
 
-                teste_p = TesteMillerRabin(p, numero_teste)
-                teste_q = TesteMillerRabin(q, numero_teste)
-                print("p é primo?",teste_p)
-                print("q é primo?", teste_q)
-                verificador = False
+                    break  # Sai do loop se os primos forem válidos
+                except ValueError:
+                    print("Erro: Insira um número válido.")
 
-                if not teste_p or len(aux1)<= 309:
-                    if not teste_p:
-                        print("O número P não é primo, insira outro P.")
-                    if len(aux1)<= 309:
-                        print("O número P tem menos do que 1024 bits, insira outro P")
-                if not teste_q or len(aux2)<= 309:
-                    if not teste_q:
-                        print("O número Q não é primo, insira outro Q.")
-                    if len(aux2)<= 309:
-                        print("O número Q tem menos do que 1024 bits, insira outro Q.")
-                else:
-                    verificador = False
-
-            chave_publica, chave_privada = Geracao_de_Chave(p,q)
-            e = chave_publica[0]
-            n = chave_publica[1]
-            d = chave_privada[0]
+            chave_publica, chave_privada = Geracao_de_Chave(p, q)
+            e, n = chave_publica
+            d, _ = chave_privada
 
             assinatura_digital = Assinatura_Mensagem(assinatura, d, n)
-            
-            lista_assinaturas[cpf] = assinatura_digital
-            lista_chaves_publicas[cpf] = [e, n]
 
-            print ("Assinatura realizada com sucesso!")
-            print("Anote as seguintes chaves públicas geradas para uma eventual consulta:")
-            print('Chave pública "e": ', e)
-            print('Chave pública "n": ', n)
-            
+            lista_assinaturas[cpf] = assinatura_digital
+            lista_chaves_publicas[cpf] = (e, n)
+
+            print("Assinatura realizada com sucesso!")
+            print("Chave pública gerada:")
+            print(f'Chave pública "e": {e}')
+            print(f'Chave pública "n": {n}')
 
         elif escolha == 2:
-            pessoa = input("Digite o cpf da pessoa cuja assinatura quer verificar: ")
-            verificar = lista_assinaturas[pessoa]
+            pessoa = input("Digite o CPF da pessoa cuja assinatura quer verificar: ").strip()
 
-            verificar_e, verificar_n = map(int, input('Digíte as chaves públicas "e" e "n", separadas por vírgula da assinatura que quer verificar: ').split(","))
+            if pessoa not in lista_assinaturas:
+                print("Erro: Não há assinaturas registradas para esse CPF.")
+                continue
 
-            homologacao = Homologação_Assinatura(verificar, pessoa, verificar_e, verificar_n)
+            try:
+                verificar = lista_assinaturas[pessoa]
+                verificar_e, verificar_n = map(int, input('Digite as chaves públicas "e" e "n", separadas por vírgula: ').split(","))
+            except ValueError:
+                print("Erro: Entrada inválida. Certifique-se de inserir os valores corretamente.")
+                continue
+
+            if (verificar_e, verificar_n) != lista_chaves_publicas.get(pessoa, (None, None)):
+                print("Erro: As chaves públicas fornecidas não correspondem às registradas.")
+                continue
+
+            documento = input("Insira o documento para verificar a assinatura: ").strip()
+            mensagem_original = extrair_assinatura(documento)
+
+            if not mensagem_original:
+                print("Erro: O documento não contém uma assinatura válida.")
+                continue
+
+            homologacao = Homologação_Assinatura(verificar, mensagem_original, verificar_e, verificar_n)
 
             if homologacao:
                 print("Assinatura verificada com sucesso!")
             else:
-                print("A assinatura não corresponde")
+                print("A assinatura não corresponde.")
+
         elif escolha == 3:
+            print("Encerrando o programa...")
             terminou = True
+        else:
+            print("Opção inválida! Digite um número entre 1 e 3.")
 
 if __name__ == "__main__":
     main()
